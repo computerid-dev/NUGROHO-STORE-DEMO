@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard Toko — Nugroho Store</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/styles/tokens.css">
+<link rel="stylesheet" href="/assets/styles/base.css">
+<link rel="stylesheet" href="/assets/styles/components.css">
+<style>
+  .dash-header { padding: var(--sp-6) 0 var(--sp-4); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: var(--sp-3); }
+  .tab-row { display: flex; gap: var(--sp-2); margin-bottom: var(--sp-5); border-bottom: 1px solid var(--c-line); }
+  .tab-btn { padding: 10px 4px; margin-right: var(--sp-5); background: none; border: none; border-bottom: 3px solid transparent; font-weight: 600; color: var(--c-ink-soft); cursor: pointer; }
+  .tab-btn.aktif { color: var(--c-navy-900); border-color: var(--c-warm-600); }
+  .order-item { padding: var(--sp-4); }
+  .order-item + .order-item { margin-top: var(--sp-3); }
+  .order-item__top { display: flex; justify-content: space-between; gap: var(--sp-3); flex-wrap: wrap; }
+  .order-item__aksi { margin-top: var(--sp-3); display: flex; gap: var(--sp-2); flex-wrap: wrap; }
+  .grid-produk-mini { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: var(--sp-4); }
+</style>
+</head>
+<body>
+
+<div id="navbar-root"></div>
+
+<div class="container">
+  <div class="dash-header">
+    <div>
+      <h1 class="mt-0">Dashboard Toko</h1>
+      <p class="text-soft mt-0" id="teks-notif">Memuat notifikasi…</p>
+    </div>
+    <a href="/pages/create-product.html" class="btn btn--brut">+ Produk Baru</a>
+  </div>
+
+  <div class="tab-row">
+    <button class="tab-btn aktif" data-tab="pesanan">Pesanan Masuk</button>
+    <button class="tab-btn" data-tab="produk">Produk Saya</button>
+  </div>
+
+  <div id="tab-pesanan">
+    <div id="daftar-pesanan" class="stack">
+      <div class="empty-state"><span class="spinner"></span></div>
+    </div>
+  </div>
+
+  <div id="tab-produk" class="hidden">
+    <div id="daftar-produk" class="grid-produk-mini">
+      <div class="empty-state"><span class="spinner"></span></div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+  import { pasangNavbar } from "/assets/scripts/navbar.js";
+  import { wajibLogin } from "/assets/scripts/auth.js";
+  import { ambilOrderMenungguPenjual, konfirmasiLunas, apakahTelatKirim } from "/assets/scripts/orders.js";
+  import { ambilProdukMilikSeller, ambilDriveLinkPrivate, hargaAktif } from "/assets/scripts/products.js";
+  import { formatRupiah, formatWaktuRelatif, tampilkanToast } from "/assets/scripts/ui.js";
+
+  pasangNavbar();
+  const { user, profil } = await wajibLogin();
+  if (!profil?.isSeller) {
+    window.location.href = "/pages/become-seller.html";
+  }
+
+  document.querySelectorAll(".tab-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".tab-btn").forEach((b) => b.classList.remove("aktif"));
+      btn.classList.add("aktif");
+      document.getElementById("tab-pesanan").classList.toggle("hidden", btn.dataset.tab !== "pesanan");
+      document.getElementById("tab-produk").classList.toggle("hidden", btn.dataset.tab !== "produk");
+    });
+  });
+
+  const LABEL_STATUS = {
+    menunggu_bayar: { teks: "Menunggu pembeli membayar", kelas: "badge--tunggu" },
+    menunggu_konfirmasi: { teks: "Menunggu konfirmasimu", kelas: "badge--diskon" },
+    lunas: { teks: "Lunas — sudah dikirim", kelas: "badge--sukses" },
+  };
+
+  async function muatPesanan() {
+    const semuaOrder = await ambilOrderMenungguPenjual(user.uid);
+    const relevan = semuaOrder.filter((o) => o.status !== "menunggu_bayar");
+    const menunggu = relevan.filter((o) => o.status === "menunggu_konfirmasi");
+
+    document.getElementById("teks-notif").innerHTML = menunggu.length > 0
+      ? `<span class="notif-dot"></span> ${menunggu.length} pembeli menunggu konfirmasimu`
+      : "Tidak ada pesanan yang menunggu konfirmasi saat ini.";
+
+    const wadah = document.getElementById("daftar-pesanan");
+    if (relevan.length === 0) {
+      wadah.innerHTML = `<div class="empty-state"><p>Belum ada pesanan masuk.</p></div>`;
+      return;
+    }
+
+    wadah.innerHTML = relevan.map((o) => {
+      const label = LABEL_STATUS[o.status];
+      const telat = apakahTelatKirim(o);
+      return `
+        <div class="panel-glass order-item" data-id="${o.id}">
+          <div class="order-item__top">
+            <div>
+              <strong>${o.productName}</strong>
+              <p class="text-soft" style="margin:4px 0;">Pembeli: ${o.buyerName} • ${formatRupiah(o.price)}</p>
+              <p class="text-soft" style="margin:0; font-size: var(--fs-xs);">Klik "sudah bayar": ${formatWaktuRelatif(o.buyerConfirmedAt)}</p>
+            </div>
+            <span class="badge ${label.kelas}">${label.teks}</span>
+          </div>
+          ${telat ? `<p class="field__error" style="display:block; margin-top:8px;">⏰ Kamu sudah melewati batas waktu kirim yang kamu janjikan sendiri untuk pesanan ini.</p>` : ""}
+          ${o.status === "menunggu_konfirmasi" ? `
+            <div class="disclaimer" style="margin-top: var(--sp-3);">
+              Cek dulu aplikasi pembayaranmu — pastikan dana <strong>${formatRupiah(o.price)}</strong> benar-benar sudah masuk sebelum menekan tombol di bawah.
+            </div>
+            <div class="order-item__aksi">
+              <button class="btn btn--brut btn--sm btn-konfirmasi-lunas" data-order="${o.id}" data-product="${o.productId}">Dana Sudah Masuk — Konfirmasi Lunas</button>
+            </div>
+          ` : ""}
+        </div>
+      `;
+    }).join("");
+
+    wadah.querySelectorAll(".btn-konfirmasi-lunas").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        btn.disabled = true;
+        btn.textContent = "Mengirim link…";
+        try {
+          const driveLink = await ambilDriveLinkPrivate(btn.dataset.product);
+          if (!driveLink) throw new Error("Link produk tidak ditemukan");
+          await konfirmasiLunas(btn.dataset.order, driveLink);
+          tampilkanToast("Order dikonfirmasi lunas, link sudah dikirim ke pembeli.", "success");
+          muatPesanan();
+        } catch (err) {
+          console.error(err);
+          tampilkanToast("Gagal konfirmasi. Coba lagi.", "error");
+          btn.disabled = false;
+          btn.textContent = "Dana Sudah Masuk — Konfirmasi Lunas";
+        }
+      });
+    });
+  }
+
+  async function muatProduk() {
+    const produkList = await ambilProdukMilikSeller(user.uid);
+    const wadah = document.getElementById("daftar-produk");
+    if (produkList.length === 0) {
+      wadah.innerHTML = `<div class="empty-state"><p>Kamu belum punya produk. <a href="/pages/create-product.html">Buat sekarang</a>.</p></div>`;
+      return;
+    }
+    wadah.innerHTML = produkList.map((p) => {
+      const { hargaBayar } = hargaAktif(p);
+      return `
+        <div class="card-product">
+          <img class="card-product__image" src="${p.imageUrl}" alt="${p.name}">
+          <div class="card-product__body">
+            <h3 class="card-product__name">${p.name}</h3>
+            <span class="price">${formatRupiah(hargaBayar)}</span>
+          </div>
+        </div>
+      `;
+    }).join("");
+  }
+
+  muatPesanan();
+  muatProduk();
+  setInterval(muatPesanan, 15000);
+</script>
+</body>
+</html>
