@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nugroho Store — Jual Beli Produk Digital, Dibayar Langsung ke Kantongmu</title>
+<meta name="description" content="Marketplace produk digital tanpa potongan platform. Pembeli scan QRIS langsung ke penjual, dana masuk ke rekeningmu sendiri, bukan ke platform.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/styles/tokens.css">
+<link rel="stylesheet" href="/assets/styles/base.css">
+<link rel="stylesheet" href="/assets/styles/components.css">
+<style>
+  .hero {
+    padding: var(--sp-9) 0 var(--sp-8);
+    display: grid;
+    grid-template-columns: 1.1fr 0.9fr;
+    gap: var(--sp-7);
+    align-items: center;
+  }
+  .hero__eyebrow-free {
+    color: var(--c-green-700);
+    font-weight: 600;
+    font-size: var(--fs-sm);
+    margin-bottom: var(--sp-3);
+  }
+  .hero h1 { font-size: var(--fs-3xl); max-width: 14ch; }
+  .hero p.lede { font-size: var(--fs-md); color: var(--c-ink-soft); max-width: 46ch; }
+  .hero__cta { display: flex; gap: var(--sp-3); margin-top: var(--sp-5); flex-wrap: wrap; }
+
+  .hero__showcase {
+    position: relative;
+    display: flex;
+    justify-content: center;
+  }
+  .showcase-card {
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-glass);
+    box-shadow: var(--glass-shadow);
+    padding: var(--sp-5);
+    width: 300px;
+  }
+  .showcase-card__thumb {
+    height: 160px;
+    border-radius: var(--radius-soft);
+    background: linear-gradient(135deg, var(--c-green-600), var(--c-navy-700));
+    margin-bottom: var(--sp-4);
+  }
+  .showcase-qris {
+    position: absolute;
+    bottom: -18px;
+    right: 26px;
+    background: var(--c-white);
+    border: var(--brut-border);
+    border-radius: var(--radius-brut);
+    box-shadow: var(--brut-shadow);
+    padding: 10px 16px;
+    font-size: var(--fs-xs);
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .kenapa {
+    padding: var(--sp-8) 0;
+    border-top: 1px solid var(--c-line);
+  }
+  .kenapa__grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--sp-6);
+    margin-top: var(--sp-6);
+  }
+  .kenapa__item h3 { font-size: var(--fs-md); margin-bottom: var(--sp-2); }
+
+  .produk-section { padding: var(--sp-8) 0 var(--sp-9); }
+  .produk-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: var(--sp-6); gap: var(--sp-4); flex-wrap: wrap; }
+
+  footer.site-footer {
+    background: var(--c-navy-900);
+    color: rgba(255,255,255,0.75);
+    padding: var(--sp-7) 0;
+    font-size: var(--fs-sm);
+  }
+  footer.site-footer a { color: var(--c-white); }
+  footer.site-footer .container { display: flex; justify-content: space-between; flex-wrap: wrap; gap: var(--sp-4); }
+
+  @media (max-width: 860px) {
+    .hero { grid-template-columns: 1fr; padding-top: var(--sp-7); }
+    .hero__showcase { order: -1; }
+    .kenapa__grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div id="navbar-root"></div>
+
+<section class="container hero">
+  <div>
+    <p class="hero__eyebrow-free">Tanpa potongan, tanpa pajak platform</p>
+    <h1>Jual produk digitalmu, uangnya langsung masuk ke kantongmu sendiri.</h1>
+    <p class="lede">Nugroho Store menghubungkan pembeli dan penjual produk digital lewat QRIS milik penjual sendiri. Platform tidak pernah menyentuh uangmu — dan karena itu, tidak memotongnya sepeser pun.</p>
+    <div class="hero__cta">
+      <a href="#produk" class="btn btn--brut">Jelajahi Produk</a>
+      <a href="/pages/become-seller.html" class="btn btn--brut-outline">Mulai Berjualan</a>
+    </div>
+  </div>
+  <div class="hero__showcase">
+    <div class="showcase-card">
+      <div class="showcase-card__thumb"></div>
+      <p class="text-soft" style="font-size: var(--fs-xs); margin-bottom: 4px;">Template Notion — Studio Kreatif</p>
+      <div class="row row--between">
+        <strong class="price">Rp49.000</strong>
+        <span class="badge badge--sukses">Terkirim otomatis</span>
+      </div>
+    </div>
+    <div class="showcase-qris">📱 Scan QRIS milik penjual</div>
+  </div>
+</section>
+
+<section class="kenapa">
+  <div class="container">
+    <h2>Kenapa transaksi di sini terasa lebih adil</h2>
+    <div class="kenapa__grid">
+      <div class="kenapa__item">
+        <h3>Dana langsung ke penjual</h3>
+        <p class="text-soft">Kamu scan QRIS milik penjual, bukan QRIS platform. Tidak ada uang yang "mampir" dulu ke mana-mana.</p>
+      </div>
+      <div class="kenapa__item">
+        <h3>Jejak konfirmasi yang jelas</h3>
+        <p class="text-soft">Setiap klik "Saya sudah bayar" tercatat waktunya, jadi ada bukti resmi kalau suatu saat terjadi kesalahpahaman.</p>
+      </div>
+      <div class="kenapa__item">
+        <h3>Batas waktu kirim yang jujur</h3>
+        <p class="text-soft">Setiap penjual menjanjikan sendiri waktu kirimnya. Kalau telat, kamu akan diberi tahu dan diarahkan ke bantuan.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="produk-section container" id="produk">
+  <div class="produk-header">
+    <div>
+      <h2 class="mt-0">Produk digital terbaru</h2>
+      <p class="text-soft mt-0">Dari template, ebook, aset desain, sampai kelas rekaman.</p>
+    </div>
+  </div>
+  <div id="grid-produk" class="grid-products">
+    <div class="empty-state"><span class="spinner"></span><p>Memuat produk…</p></div>
+  </div>
+</section>
+
+<footer class="site-footer">
+  <div class="container">
+    <div>
+      <strong style="color:#fff; font-family: var(--font-display); font-size: var(--fs-md);">Nugroho Store</strong>
+      <p style="margin-top: 8px; max-width: 40ch;">Marketplace produk digital tanpa potongan. Segala urusan keuangan antara pembeli & penjual adalah tanggung jawab kedua pihak, bukan platform.</p>
+    </div>
+    <div>
+      <p style="margin-bottom: 4px;">Butuh bantuan?</p>
+      <a href="#" id="footer-cs-link">Hubungi Customer Service</a>
+    </div>
+  </div>
+</footer>
+
+<script type="module">
+  import { pasangNavbar } from "/assets/scripts/navbar.js";
+  import { ambilSemuaProduk, hargaAktif } from "/assets/scripts/products.js";
+  import { formatRupiah, tampilkanToast } from "/assets/scripts/ui.js";
+  import { ADMIN_AUTH_URL } from "/assets/scripts/firebase-config.js";
+
+  pasangNavbar();
+  document.getElementById("footer-cs-link").href = `${ADMIN_AUTH_URL}/cs-help.html`;
+
+  async function muatProduk() {
+    const grid = document.getElementById("grid-produk");
+    try {
+      const produkList = await ambilSemuaProduk();
+      if (produkList.length === 0) {
+        grid.innerHTML = `<div class="empty-state"><p>Belum ada produk yang dipublikasikan. Jadilah yang pertama! 🌱</p></div>`;
+        return;
+      }
+      grid.innerHTML = produkList.map((p) => {
+        const { hargaAsli, hargaBayar, sedangDiskon } = hargaAktif(p);
+        return `
+          <a class="card-product" href="/pages/product.html?id=${p.id}">
+            <img class="card-product__image" src="${p.imageUrl}" alt="${p.name}" loading="lazy">
+            <div class="card-product__body">
+              <h3 class="card-product__name">${p.name}</h3>
+              <div class="card-product__price-row">
+                ${sedangDiskon
+                  ? `<span class="price price--strike">${formatRupiah(hargaAsli)}</span><span class="price price--sale">${formatRupiah(hargaBayar)}</span><span class="badge badge--diskon">Diskon</span>`
+                  : `<span class="price">${formatRupiah(hargaBayar)}</span>`}
+              </div>
+            </div>
+          </a>
+        `;
+      }).join("");
+    } catch (err) {
+      console.error(err);
+      grid.innerHTML = `<div class="empty-state"><p>Gagal memuat produk. Coba muat ulang halaman.</p></div>`;
+      tampilkanToast("Gagal memuat produk", "error");
+    }
+  }
+
+  muatProduk();
+</script>
+</body>
+</html>
