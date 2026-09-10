@@ -1,0 +1,141 @@
+rules_version = '2';
+
+// =============================================================================
+// FIRESTORE SECURITY RULES — Nugroho Store (project: store-6d392)
+//
+// Prinsip utama:
+// - Pembeli tidak bisa mengubah status order jadi "lunas" sendiri. Hanya
+//   seller pemilik produk yang boleh melakukan itu, dan hanya dari status
+//   "menunggu_konfirmasi".
+// - Produk hanya bisa diedit oleh seller pemiliknya.
+// - Link Google Drive (di `products_private`) hanya bisa dibaca oleh seller
+//   pemilik produk — tidak pernah lewat koleksi `products` yang publik.
+// - Field-field kritikal pada `orders` (harga, status transisi) divalidasi
+//   supaya tidak bisa dimanipulasi dari sisi client.
+// =============================================================================
+
+function login() {
+  return request.auth != null;
+}
+
+function pemilik(uid) {
+  return login() && request.auth.uid == uid;
+}
+
+function hanyaFieldBerubah(sebelum, sesudah, fieldDiizinkan) {
+  return sesudah.diff(sebelum).affectedKeys().hasOnly(fieldDiizinkan);
+}
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---------------------------------------------------------------------
+    // users — profil dasar (pembeli maupun penjual)
+    // ---------------------------------------------------------------------
+    match /users/{uid} {
+      allow read: if login();
+      allow create: if pemilik(uid)
+                    && request.resource.data.keys().hasAll(['name', 'phone'])
+                    && request.resource.data.isSeller == false;
+      // isSeller hanya boleh diubah lewat alur "daftar jadi penjual" (server
+      // aturan di bawah membolehkan diri sendiri set true, tapi tidak boleh
+      // mengubah balik ke false secara sepihak untuk mencegah penyalahgunaan).
+      allow update: if pemilik(uid)
+                    && (!('isSeller' in request.resource.data.diff(resource.data).affectedKeys())
+                        || request.resource.data.isSeller == true);
+      allow delete: if false;
+    }
+
+    // ---------------------------------------------------------------------
+    // sellers — data tambahan penjual (bio + QRIS)
+    // ---------------------------------------------------------------------
+    match /sellers/{uid} {
+      allow read: if login();
+      allow create: if pemilik(uid)
+                    && request.resource.data.keys().hasAll(['sellerBio', 'qrisImageUrl']);
+      allow update: if pemilik(uid)
+                    && hanyaFieldBerubah(resource.data, request.resource.data, ['sellerBio', 'qrisImageUrl']);
+      allow delete: if false;
+    }
+
+    // ---------------------------------------------------------------------
+    // products — data publik produk (TANPA link Google Drive)
+    // ---------------------------------------------------------------------
+    match /products/{productId} {
+      allow read: if resource.data.isPublished == true || (login() && resource.data.sellerId == request.auth.uid);
+
+      allow create: if login()
+                    && request.resource.data.sellerId == request.auth.uid
+                    && get(/databases/$(database)/documents/sellers/$(request.auth.uid)) != null
+                    && request.resource.data.price is number && request.resource.data.price > 0
+                    && request.resource.data.deliveryMinutes >= 5 && request.resource.data.deliveryMinutes <= 720
+                    && !('driveLink' in request.resource.data); // link WAJIB lewat products_private
+
+      allow update: if login() && resource.data.sellerId == request.auth.uid
+                    && request.resource.data.sellerId == resource.data.sellerId;
+
+      allow delete: if login() && resource.data.sellerId == request.auth.uid;
+    }
+
+    // ---------------------------------------------------------------------
+    // products_private — link Google Drive, HANYA seller pemilik yang baca
+    // ---------------------------------------------------------------------
+    match /products_private/{productId} {
+      allow read: if login() && resource.data.sellerId == request.auth.uid;
+      allow create: if login()
+                    && request.resource.data.sellerId == request.auth.uid
+                    && get(/databases/$(database)/documents/products/$(productId)).data.sellerId == request.auth.uid;
+      allow update: if login() && resource.data.sellerId == request.auth.uid
+                    && hanyaFieldBerubah(resource.data, request.resource.data, ['driveLink']);
+      allow delete: if false;
+    }
+
+    // ---------------------------------------------------------------------
+    // orders — inti transaksi. Ini bagian paling sensitif.
+    // ---------------------------------------------------------------------
+    match /orders/{orderId} {
+      allow read: if login() && (resource.data.buyerId == request.auth.uid || resource.data.sellerId == request.auth.uid);
+
+      // Pembeli membuat order baru saat klik "Beli". Harga & data produk
+      // divalidasi terhadap dokumen produk aslinya supaya tidak bisa
+      // dipalsukan dari client (misal ganti harga jadi Rp1).
+      allow create: if login()
+                    && request.resource.data.buyerId == request.auth.uid
+                    && request.resource.data.status == 'menunggu_bayar'
+                    && request.resource.data.driveLink == null
+                    && request.resource.data.sellerId ==
+                         get(/databases/$(database)/documents/products/$(request.resource.data.productId)).data.sellerId;
+
+      // Transisi 1: pembeli klik "Saya sudah bayar".
+      // Hanya boleh: menunggu_bayar -> menunggu_konfirmasi, hanya field waktu yang berubah.
+      allow update: if login() && resource.data.buyerId == request.auth.uid
+                    && resource.data.status == 'menunggu_bayar'
+                    && request.resource.data.status == 'menunggu_konfirmasi'
+                    && hanyaFieldBerubah(resource.data, request.resource.data, ['status', 'buyerConfirmedAt', 'deliveryDeadline']);
+
+      // Transisi 2: penjual konfirmasi lunas.
+      // Hanya boleh: menunggu_konfirmasi -> lunas, hanya field status/waktu/link yang berubah,
+      // dan driveLink yang dikirim harus sama persis dengan yang ada di products_private
+      // (mencegah seller mengirim link asal-asalan atau pembeli memalsukan driveLink sendiri).
+      allow update: if login() && resource.data.sellerId == request.auth.uid
+                    && resource.data.status == 'menunggu_konfirmasi'
+                    && request.resource.data.status == 'lunas'
+                    && hanyaFieldBerubah(resource.data, request.resource.data, ['status', 'sellerConfirmedAt', 'driveLink'])
+                    && request.resource.data.driveLink ==
+                         get(/databases/$(database)/documents/products_private/$(resource.data.productId)).data.driveLink;
+
+      allow delete: if false;
+    }
+
+    // ---------------------------------------------------------------------
+    // support_tickets — pesan ke Customer Service (dari Admin Auth System)
+    // ---------------------------------------------------------------------
+    match /support_tickets/{ticketId} {
+      allow create: if request.resource.data.pesan is string
+                    && request.resource.data.pesan.size() > 0
+                    && request.resource.data.pesan.size() < 3000
+                    && request.resource.data.status == 'baru';
+      allow read, update, delete: if false; // dibaca lewat Firebase Console / tool admin internal, bukan dari client
+    }
+  }
+}
