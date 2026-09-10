@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pesanan Saya — Nugroho Store</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/styles/tokens.css">
+<link rel="stylesheet" href="/assets/styles/base.css">
+<link rel="stylesheet" href="/assets/styles/components.css">
+<style>
+  .order-item { padding: var(--sp-4); }
+  .order-item + .order-item { margin-top: var(--sp-3); }
+  .order-item__top { display: flex; justify-content: space-between; gap: var(--sp-3); flex-wrap: wrap; align-items: center; }
+</style>
+</head>
+<body>
+
+<div id="navbar-root"></div>
+
+<div class="container" style="padding: var(--sp-6) 0 var(--sp-9);">
+  <h1>Pesanan Saya</h1>
+  <div id="daftar-order" class="stack">
+    <div class="empty-state"><span class="spinner"></span></div>
+  </div>
+</div>
+
+<script type="module">
+  import { pasangNavbar } from "/assets/scripts/navbar.js";
+  import { wajibLogin } from "/assets/scripts/auth.js";
+  import { ambilOrderPembeli, apakahTelatKirim, apakahSesiKedaluwarsa } from "/assets/scripts/orders.js";
+  import { formatRupiah, formatWaktuRelatif } from "/assets/scripts/ui.js";
+  import { ADMIN_AUTH_URL } from "/assets/scripts/firebase-config.js";
+
+  pasangNavbar();
+  const { user } = await wajibLogin();
+
+  const LABEL_STATUS = {
+    menunggu_bayar: { teks: "Menunggu kamu membayar", kelas: "badge--tunggu" },
+    menunggu_konfirmasi: { teks: "Menunggu konfirmasi penjual", kelas: "badge--diskon" },
+    lunas: { teks: "Lunas — sudah dikirim", kelas: "badge--sukses" },
+  };
+
+  async function muat() {
+    const daftar = await ambilOrderPembeli(user.uid);
+    const wadah = document.getElementById("daftar-order");
+    if (daftar.length === 0) {
+      wadah.innerHTML = `<div class="empty-state"><p>Belum ada pesanan. <a href="/index.html#produk">Jelajahi produk</a>.</p></div>`;
+      return;
+    }
+
+    wadah.innerHTML = daftar.map((o) => {
+      const label = LABEL_STATUS[o.status] || LABEL_STATUS.menunggu_bayar;
+      const telat = apakahTelatKirim(o);
+      const basi = apakahSesiKedaluwarsa(o);
+      return `
+        <div class="panel-glass order-item">
+          <div class="order-item__top">
+            <div class="row">
+              <img src="${o.productImage}" alt="" width="56" height="56" style="border-radius: var(--radius-soft); object-fit: cover;">
+              <div>
+                <strong>${o.productName}</strong>
+                <p class="text-soft" style="margin: 2px 0;">${formatRupiah(o.price)} • ${formatWaktuRelatif(o.createdAt)}</p>
+              </div>
+            </div>
+            <span class="badge ${label.kelas}">${label.teks}</span>
+          </div>
+
+          ${telat ? `
+            <div class="disclaimer" style="margin-top: var(--sp-3); border-left-color: var(--c-danger);">
+              Penjual melebihi waktu kirim yang dijanjikan untuk pesanan ini.
+              <a href="${ADMIN_AUTH_URL}/cs-help.html?order=${o.id}" style="font-weight:600;">Hubungi Customer Service</a> kalau kamu butuh bantuan.
+            </div>
+          ` : ""}
+
+          ${basi ? `
+            <div class="disclaimer" style="margin-top: var(--sp-3);">
+              Kamu belum mengonfirmasi pembayaran untuk pesanan ini. Kalau kamu belum jadi membayar, pesanan ini bisa diabaikan.
+            </div>
+          ` : ""}
+
+          ${o.status === "lunas" ? `
+            <a href="${o.driveLink}" target="_blank" rel="noopener" class="btn btn--brut btn--sm" style="margin-top: var(--sp-3);">Buka Link Google Drive</a>
+          ` : ""}
+
+          ${o.status === "menunggu_konfirmasi" && !telat ? `
+            <p class="field__hint" style="margin-top: var(--sp-3);">Status: belum terkonfirmasi, mohon tunggu penjual mengecek pembayaranmu.</p>
+          ` : ""}
+        </div>
+      `;
+    }).join("");
+  }
+
+  muat();
+  setInterval(muat, 8000);
+</script>
+</body>
+</html>
