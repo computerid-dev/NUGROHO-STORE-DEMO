@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mulai Berjualan — Nugroho Store</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/styles/tokens.css">
+<link rel="stylesheet" href="/assets/styles/base.css">
+<link rel="stylesheet" href="/assets/styles/components.css">
+</head>
+<body>
+
+<div id="navbar-root"></div>
+
+<div class="container">
+  <div class="panel-glass form-card">
+    <h1>Mulai berjualan di Nugroho Store</h1>
+    <p class="text-soft">Cukup dua data: ceritakan sedikit tentang tokomu, dan pasang QRIS yang aktif. Setelah ini kamu langsung bisa membuat produk.</p>
+
+    <form id="form-seller" novalidate>
+      <div class="field" id="field-bio">
+        <label for="sellerBio">Bio penjual</label>
+        <textarea id="sellerBio" placeholder="Contoh: Saya menjual template desain untuk kreator konten sejak 2022." required></textarea>
+        <p class="field__error">Bio wajib diisi.</p>
+      </div>
+
+      <div class="field" id="field-qris">
+        <label for="qrisFile">Gambar QRIS aktif</label>
+        <input type="file" id="qrisFile" accept="image/*" required>
+        <p class="field__hint">Boleh QRIS dari DANA, GoPay, ShopeePay, OVO, m-banking, dll. Pastikan nama di aplikasi pembayaranmu cocok dengan nama akunmu di Nugroho Store, supaya pembeli tidak ragu.</p>
+        <p class="field__error">Gambar QRIS wajib diunggah.</p>
+      </div>
+
+      <button type="submit" class="btn btn--brut btn--full" id="btn-submit">Simpan &amp; Mulai Jualan</button>
+    </form>
+  </div>
+</div>
+
+<script type="module">
+  import { pasangNavbar } from "/assets/scripts/navbar.js";
+  import { wajibLogin } from "/assets/scripts/auth.js";
+  import { daftarJadiSeller } from "/assets/scripts/sellers.js";
+  import { validasiTidakKosong, tampilkanToast } from "/assets/scripts/ui.js";
+
+  pasangNavbar();
+  const { user, profil } = await wajibLogin();
+
+  if (profil?.isSeller) {
+    window.location.href = "/pages/dashboard-seller.html";
+  }
+
+  document.getElementById("form-seller").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const sellerBio = document.getElementById("sellerBio").value;
+    const qrisFile = document.getElementById("qrisFile").files[0];
+
+    let valid = true;
+    document.getElementById("field-bio").classList.toggle("has-error", !validasiTidakKosong(sellerBio) && (valid = false, true));
+    document.getElementById("field-qris").classList.toggle("has-error", !qrisFile && (valid = false, true));
+    if (!valid) return;
+
+    const tombol = document.getElementById("btn-submit");
+    tombol.disabled = true;
+    tombol.textContent = "Menyimpan…";
+    try {
+      await daftarJadiSeller(user.uid, { sellerBio, qrisFile });
+      tampilkanToast("Selamat! Tokomu sudah aktif.", "success");
+      window.location.href = "/pages/dashboard-seller.html";
+    } catch (err) {
+      console.error(err);
+      tampilkanToast("Gagal menyimpan, coba lagi.", "error");
+      tombol.disabled = false;
+      tombol.textContent = "Simpan & Mulai Jualan";
+    }
+  });
+</script>
+</body>
+</html>
