@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Detail Produk — Nugroho Store</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/styles/tokens.css">
+<link rel="stylesheet" href="/assets/styles/base.css">
+<link rel="stylesheet" href="/assets/styles/components.css">
+<style>
+  .detail-wrap {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--sp-7);
+    padding: var(--sp-7) 0 var(--sp-9);
+    align-items: start;
+  }
+  .detail-wrap img.produk-gambar {
+    border-radius: var(--radius-glass);
+    border: 1px solid var(--c-line);
+  }
+  .seller-chip { display: flex; align-items: center; gap: var(--sp-2); margin-bottom: var(--sp-4); }
+  .seller-chip img { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; background: var(--c-green-300); }
+  .harga-row { display: flex; align-items: baseline; gap: var(--sp-3); margin: var(--sp-3) 0 var(--sp-4); }
+  .harga-row .price { font-size: var(--fs-xl); }
+  .info-kirim { font-size: var(--fs-sm); color: var(--c-ink-soft); margin-bottom: var(--sp-5); }
+
+  .status-track { display: flex; flex-direction: column; gap: var(--sp-3); }
+  .status-step { display: flex; gap: var(--sp-3); align-items: flex-start; opacity: 0.45; }
+  .status-step.aktif { opacity: 1; }
+  .status-step .dot { width: 12px; height: 12px; border-radius: 50%; background: var(--c-line); margin-top: 4px; flex-shrink: 0; }
+  .status-step.aktif .dot { background: var(--c-warm-600); }
+  .status-step.selesai .dot { background: var(--c-green-600); }
+
+  @media (max-width: 860px) {
+    .detail-wrap { grid-template-columns: 1fr; padding-top: var(--sp-5); }
+  }
+</style>
+</head>
+<body>
+
+<div id="navbar-root"></div>
+
+<div class="container detail-wrap">
+  <div>
+    <img id="produk-gambar" class="produk-gambar" src="" alt="">
+  </div>
+
+  <div>
+    <div class="seller-chip">
+      <img id="seller-avatar" src="" alt="">
+      <span id="seller-nama" class="text-soft"></span>
+    </div>
+    <h1 id="produk-nama">Memuat…</h1>
+    <div class="harga-row">
+      <span id="harga-asli" class="price price--strike hidden"></span>
+      <span id="harga-bayar" class="price"></span>
+      <span id="badge-diskon" class="badge badge--diskon hidden">Diskon</span>
+    </div>
+    <p id="info-kirim" class="info-kirim"></p>
+    <p id="produk-deskripsi" class="text-soft"></p>
+
+    <div id="area-aksi" class="stack">
+      <button id="btn-beli" class="btn btn--brut btn--full">Beli Produk Ini</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal checkout QRIS -->
+<div class="modal-overlay" id="modal-checkout" hidden>
+  <div class="modal">
+    <h3>Selesaikan pembayaran</h3>
+
+    <div class="disclaimer" style="margin-bottom: var(--sp-4);">
+      <strong>Baca sebelum membayar:</strong> Nugroho Store tidak mengambil potongan atau pajak apa pun dari transaksi ini. Segala urusan keuangan (kelebihan/kekurangan bayar, dana tidak masuk, dll) sepenuhnya menjadi tanggung jawab pembeli dan penjual — bukan tanggung jawab platform.
+    </div>
+
+    <div class="qris-box">
+      <img id="qris-image" src="" alt="QRIS Penjual" width="220">
+      <p style="margin-bottom:4px;">Total yang harus dibayar</p>
+      <p class="price" id="qris-total" style="font-size: var(--fs-lg);"></p>
+    </div>
+
+    <p class="field__hint" style="margin-top: var(--sp-3);">
+      Scan QRIS di atas pakai aplikasi pembayaranmu sendiri (DANA/GoPay/ShopeePay/OVO/m-banking), lalu masukkan nominal <strong>persis sama</strong> dengan total di atas. Setelah dana terkirim di aplikasimu, klik tombol di bawah.
+    </p>
+
+    <p class="field__hint" style="color: var(--c-danger);">
+      ⚠️ Jangan membayar dua kali ke QRIS berbeda untuk produk yang sama.
+    </p>
+
+    <button id="btn-sudah-bayar" class="btn btn--brut btn--full" style="margin-top: var(--sp-4);">Saya Sudah Bayar</button>
+    <button id="btn-batal-checkout" class="btn btn--ghost btn--full" style="margin-top: var(--sp-2);">Batal</button>
+  </div>
+</div>
+
+<!-- Panel status order (muncul setelah klik "Beli") -->
+<div class="modal-overlay" id="modal-status" hidden>
+  <div class="modal">
+    <h3>Status Pesananmu</h3>
+    <div class="status-track">
+      <div class="status-step" id="step-bayar">
+        <span class="dot"></span>
+        <div>
+          <strong>Menunggu kamu membayar</strong>
+          <p class="text-soft" style="margin:0;">Scan QRIS lalu klik "Saya sudah bayar".</p>
+        </div>
+      </div>
+      <div class="status-step" id="step-konfirmasi">
+        <span class="dot"></span>
+        <div>
+          <strong>Menunggu konfirmasi penjual</strong>
+          <p class="text-soft" style="margin:0;" id="estimasi-kirim"></p>
+        </div>
+      </div>
+      <div class="status-step" id="step-lunas">
+        <span class="dot"></span>
+        <div>
+          <strong>Lunas — produk terkirim</strong>
+          <div id="area-drive-link"></div>
+        </div>
+      </div>
+    </div>
+    <div id="peringatan-telat" class="disclaimer hidden" style="margin-top: var(--sp-4); border-left-color: var(--c-danger);"></div>
+    <button id="btn-tutup-status" class="btn btn--ghost btn--full" style="margin-top: var(--sp-5);">Tutup</button>
+  </div>
+</div>
+
+<script type="module">
+  import { pasangNavbar } from "/assets/scripts/navbar.js";
+  import { wajibLogin } from "/assets/scripts/auth.js";
+  import { ambilProdukById, hargaAktif } from "/assets/scripts/products.js";
+  import { ambilProfilSeller } from "/assets/scripts/sellers.js";
+  import { buatOrder, tandaiSudahBayar, ambilOrder, apakahTelatKirim } from "/assets/scripts/orders.js";
+  import { formatRupiah, formatDurasiKirim, bukaModal, tutupModal, tampilkanToast } from "/assets/scripts/ui.js";
+
+  pasangNavbar();
+
+  const params = new URLSearchParams(window.location.search);
+  const productId = params.get("id");
+  if (!productId) window.location.href = "/index.html";
+
+  let produk, seller, orderAktifId, pollTimer;
+
+  async function muat() {
+    produk = await ambilProdukById(productId);
+    if (!produk) {
+      document.querySelector(".detail-wrap").innerHTML = `<p>Produk tidak ditemukan atau sudah tidak dijual.</p>`;
+      return;
+    }
+    seller = await ambilProfilSeller(produk.sellerId);
+
+    document.title = `${produk.name} — Nugroho Store`;
+    document.getElementById("produk-gambar").src = produk.imageUrl;
+    document.getElementById("produk-gambar").alt = produk.name;
+    document.getElementById("produk-nama").textContent = produk.name;
+    document.getElementById("produk-deskripsi").textContent = produk.description;
+    document.getElementById("info-kirim").textContent = `Dikirim dalam ${formatDurasiKirim(produk.deliveryMinutes)} setelah pembayaran dikonfirmasi penjual.`;
+    document.getElementById("seller-nama").textContent = seller?.sellerBio ? `Dijual oleh penjual terverifikasi` : "Penjual";
+
+    const { hargaAsli, hargaBayar, sedangDiskon } = hargaAktif(produk);
+    document.getElementById("harga-bayar").textContent = formatRupiah(hargaBayar);
+    if (sedangDiskon) {
+      document.getElementById("harga-asli").textContent = formatRupiah(hargaAsli);
+      document.getElementById("harga-asli").classList.remove("hidden");
+      document.getElementById("badge-diskon").classList.remove("hidden");
+    }
+  }
+
+  document.getElementById("btn-beli").addEventListener("click", async () => {
+    const { user, profil } = await wajibLogin();
+    try {
+      document.getElementById("btn-beli").disabled = true;
+      orderAktifId = await buatOrder(user.uid, profil?.name || "Pembeli", produk, seller);
+      document.getElementById("qris-image").src = seller?.qrisImageUrl || "";
+      const { hargaBayar } = hargaAktif(produk);
+      document.getElementById("qris-total").textContent = formatRupiah(hargaBayar);
+      bukaModal("modal-checkout");
+    } catch (err) {
+      console.error(err);
+      tampilkanToast("Gagal membuat pesanan, coba lagi.", "error");
+    } finally {
+      document.getElementById("btn-beli").disabled = false;
+    }
+  });
+
+  document.getElementById("btn-batal-checkout").addEventListener("click", () => tutupModal("modal-checkout"));
+
+  document.getElementById("btn-sudah-bayar").addEventListener("click", async () => {
+    const tombol = document.getElementById("btn-sudah-bayar");
+    tombol.disabled = true;
+    tombol.textContent = "Menyimpan…";
+    try {
+      await tandaiSudahBayar(orderAktifId);
+      tutupModal("modal-checkout");
+      bukaModal("modal-status");
+      mulaiPantauStatus();
+    } catch (err) {
+      console.error(err);
+      tampilkanToast("Gagal mencatat konfirmasi. Coba lagi.", "error");
+    } finally {
+      tombol.disabled = false;
+      tombol.textContent = "Saya Sudah Bayar";
+    }
+  });
+
+  function mulaiPantauStatus() {
+    perbaruiTampilanStatus();
+    pollTimer = setInterval(perbaruiTampilanStatus, 5000);
+  }
+
+  async function perbaruiTampilanStatus() {
+    const order = await ambilOrder(orderAktifId);
+    if (!order) return;
+
+    document.getElementById("step-bayar").classList.add(order.status === "menunggu_bayar" ? "aktif" : "selesai");
+    document.getElementById("step-konfirmasi").classList.toggle("aktif", order.status === "menunggu_konfirmasi");
+    document.getElementById("step-konfirmasi").classList.toggle("selesai", order.status === "lunas");
+    document.getElementById("step-lunas").classList.toggle("aktif", order.status === "lunas");
+    document.getElementById("step-lunas").classList.toggle("selesai", order.status === "lunas");
+
+    document.getElementById("estimasi-kirim").textContent =
+      `Penjual menjanjikan kirim dalam ${formatDurasiKirim(order.deliveryMinutes)} sejak kamu konfirmasi bayar.`;
+
+    const peringatan = document.getElementById("peringatan-telat");
+    if (apakahTelatKirim(order)) {
+      peringatan.classList.remove("hidden");
+      peringatan.innerHTML = `<strong>Penjual melebihi waktu kirim yang dijanjikan.</strong> Ini belum tentu berarti ada masalah — coba tunggu sebentar lagi, atau hubungi Customer Service kalau kamu butuh bantuan.`;
+    } else {
+      peringatan.classList.add("hidden");
+    }
+
+    if (order.status === "lunas") {
+      clearInterval(pollTimer);
+      document.getElementById("area-drive-link").innerHTML = `
+        <a href="${order.driveLink}" target="_blank" rel="noopener" class="btn btn--brut btn--sm" style="margin-top:8px;">Buka Link Google Drive</a>
+      `;
+      tampilkanToast("Produk sudah dikirim! 🎉", "success");
+    }
+  }
+
+  document.getElementById("btn-tutup-status").addEventListener("click", () => {
+    clearInterval(pollTimer);
+    tutupModal("modal-status");
+  });
+
+  muat();
+</script>
+</body>
+</html>
