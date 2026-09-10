@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Buat Produk Baru — Nugroho Store</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/styles/tokens.css">
+<link rel="stylesheet" href="/assets/styles/base.css">
+<link rel="stylesheet" href="/assets/styles/components.css">
+<style>
+  .toggle-row { display: flex; align-items: center; gap: var(--sp-2); margin-bottom: var(--sp-3); }
+  .toggle-row input { width: auto; }
+</style>
+</head>
+<body>
+
+<div id="navbar-root"></div>
+
+<div class="container">
+  <div class="panel-glass form-card" style="max-width: 560px;">
+    <h1>Buat produk baru</h1>
+    <p class="text-soft">Link Google Drive tidak pernah ditampilkan ke publik — hanya dikirim ke pembeli setelah kamu konfirmasi lunas.</p>
+
+    <form id="form-produk" novalidate>
+      <div class="field" id="field-gambar">
+        <label for="imageFile">Gambar produk</label>
+        <input type="file" id="imageFile" accept="image/*" required>
+        <p class="field__error">Gambar produk wajib diunggah.</p>
+      </div>
+
+      <div class="field" id="field-nama">
+        <label for="name">Nama produk</label>
+        <input type="text" id="name" placeholder="Contoh: Template Notion Studio Kreatif" required>
+        <p class="field__error">Nama produk wajib diisi.</p>
+      </div>
+
+      <div class="field" id="field-harga">
+        <label for="price">Harga produk (Rp)</label>
+        <input type="number" id="price" min="1000" step="500" placeholder="49000" required>
+        <p class="field__error">Harga minimal Rp1.000.</p>
+      </div>
+
+      <div class="toggle-row">
+        <input type="checkbox" id="pakaiDiskon">
+        <label for="pakaiDiskon" style="margin:0;">Aktifkan harga diskon</label>
+      </div>
+
+      <div id="area-diskon" class="hidden">
+        <div class="field" id="field-diskon-harga">
+          <label for="discountPrice">Harga diskon (Rp)</label>
+          <input type="number" id="discountPrice" min="500" step="500">
+          <p class="field__error">Harga diskon harus lebih kecil dari harga normal.</p>
+        </div>
+        <div class="field" id="field-diskon-durasi">
+          <label for="discountDays">Durasi diskon (hari)</label>
+          <input type="number" id="discountDays" min="7" max="365" placeholder="Minimal 7 hari, maksimal 365 hari">
+          <p class="field__hint">Minimal 1 minggu (7 hari), maksimal 1 tahun (365 hari).</p>
+          <p class="field__error">Durasi harus antara 7–365 hari.</p>
+        </div>
+      </div>
+
+      <div class="field" id="field-durasi-kirim">
+        <label for="deliveryMinutes">Jam kerja pengiriman (menit)</label>
+        <input type="number" id="deliveryMinutes" min="5" max="720" placeholder="Minimal 5 menit, maksimal 720 menit (12 jam)" required>
+        <p class="field__hint">Waktu maksimal kamu janjikan untuk konfirmasi lunas &amp; kirim link, dihitung sejak pembeli klik "Saya sudah bayar".</p>
+        <p class="field__error">Durasi kirim harus antara 5–720 menit.</p>
+      </div>
+
+      <div class="field" id="field-deskripsi">
+        <label for="description">Deskripsi produk</label>
+        <textarea id="description" placeholder="Jelaskan isi produk, format file, dan apa yang didapat pembeli." required></textarea>
+        <p class="field__error">Deskripsi wajib diisi.</p>
+      </div>
+
+      <div class="field" id="field-drive">
+        <label for="driveLink">Link Google Drive produk</label>
+        <input type="url" id="driveLink" placeholder="https://drive.google.com/..." required>
+        <p class="field__hint">Pastikan akses "siapa saja yang punya link" sudah diaktifkan di Google Drive.</p>
+        <p class="field__error">Masukkan link Google Drive yang valid.</p>
+      </div>
+
+      <button type="submit" class="btn btn--brut btn--full" id="btn-submit">Publish Produk</button>
+    </form>
+  </div>
+</div>
+
+<script type="module">
+  import { pasangNavbar } from "/assets/scripts/navbar.js";
+  import { wajibLogin } from "/assets/scripts/auth.js";
+  import { publishProduk } from "/assets/scripts/products.js";
+  import { validasiTidakKosong, validasiUrlGoogleDrive, tampilkanToast } from "/assets/scripts/ui.js";
+
+  pasangNavbar();
+  const { user, profil } = await wajibLogin();
+  if (!profil?.isSeller) {
+    tampilkanToast("Kamu perlu daftar jadi penjual dulu.", "error");
+    window.location.href = "/pages/become-seller.html";
+  }
+
+  document.getElementById("pakaiDiskon").addEventListener("change", (e) => {
+    document.getElementById("area-diskon").classList.toggle("hidden", !e.target.checked);
+  });
+
+  function setError(fieldId, kondisiError) {
+    document.getElementById(fieldId).classList.toggle("has-error", kondisiError);
+    return kondisiError;
+  }
+
+  document.getElementById("form-produk").addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    const imageFile = document.getElementById("imageFile").files[0];
+    const name = document.getElementById("name").value;
+    const price = document.getElementById("price").value;
+    const pakaiDiskon = document.getElementById("pakaiDiskon").checked;
+    const discountPrice = document.getElementById("discountPrice").value;
+    const discountDays = document.getElementById("discountDays").value;
+    const deliveryMinutes = Number(document.getElementById("deliveryMinutes").value);
+    const description = document.getElementById("description").value;
+    const driveLink = document.getElementById("driveLink").value;
+
+    let adaError = false;
+    if (setError("field-gambar", !imageFile)) adaError = true;
+    if (setError("field-nama", !validasiTidakKosong(name))) adaError = true;
+    if (setError("field-harga", !price || Number(price) < 1000)) adaError = true;
+    if (pakaiDiskon) {
+      if (setError("field-diskon-harga", !discountPrice || Number(discountPrice) >= Number(price))) adaError = true;
+      if (setError("field-diskon-durasi", !discountDays || discountDays < 7 || discountDays > 365)) adaError = true;
+    }
+    if (setError("field-durasi-kirim", !deliveryMinutes || deliveryMinutes < 5 || deliveryMinutes > 720)) adaError = true;
+    if (setError("field-deskripsi", !validasiTidakKosong(description))) adaError = true;
+    if (setError("field-drive", !validasiUrlGoogleDrive(driveLink))) adaError = true;
+
+    if (adaError) return;
+
+    const tombol = document.getElementById("btn-submit");
+    tombol.disabled = true;
+    tombol.textContent = "Mempublikasikan…";
+    try {
+      await publishProduk(user.uid, {
+        imageFile, name, price,
+        discountPrice: pakaiDiskon ? discountPrice : null,
+        discountDays: pakaiDiskon ? discountDays : null,
+        deliveryMinutes, description, driveLink,
+      });
+      tampilkanToast("Produk berhasil dipublikasikan!", "success");
+      window.location.href = "/pages/dashboard-seller.html";
+    } catch (err) {
+      console.error(err);
+      tampilkanToast("Gagal mempublikasikan produk, coba lagi.", "error");
+      tombol.disabled = false;
+      tombol.textContent = "Publish Produk";
+    }
+  });
+</script>
+</body>
+</html>
